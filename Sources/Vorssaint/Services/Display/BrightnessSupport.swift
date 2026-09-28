@@ -421,7 +421,7 @@ enum BrightnessSupport {
         mutating func owner(of press: BrightnessKeyEvent, option: Bool, shift: Bool,
                             commandOrControl: Bool) -> BrightnessKeyOwner {
             let increases = press.delta > 0
-            guard press.isKeyDown else { return owners.removeValue(forKey: increases) ?? .app(delta: press.delta) }
+            guard press.isKeyDown else { return owners.removeValue(forKey: increases) ?? .system }
             if !press.isRepeat {
                 if commandOrControl || (option && !shift) {
                     owners[increases] = .system
@@ -429,7 +429,7 @@ enum BrightnessSupport {
                     owners[increases] = .app(delta: option ? press.delta / 4 : press.delta)
                 }
             }
-            return owners[increases] ?? .app(delta: press.delta)
+            return owners[increases] ?? .system
         }
     }
 

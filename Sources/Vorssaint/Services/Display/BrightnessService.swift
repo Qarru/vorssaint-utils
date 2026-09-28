@@ -1067,6 +1067,7 @@ final class BrightnessService: ObservableObject {
         CFMachPortInvalidate(tap)
         keyTapSource = nil
         keyTap = nil
+        keyOwnership = BrightnessSupport.BrightnessKeyOwnership()
     }
 
     // MARK: - Brightness keys on other keyboards

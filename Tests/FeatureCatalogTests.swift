@@ -2474,11 +2474,23 @@ enum FeatureCatalogTests {
         var shiftPress = BrightnessSupport.BrightnessKeyOwnership()
         suite.expect(owner(&shiftPress, keyDown, shift: true) == step,
                "Shift alone keeps the ordinary brightness step")
+        var unseenPress = BrightnessSupport.BrightnessKeyOwnership()
+        suite.expect(owner(&unseenPress, keyRepeat, option: true, shift: true) == .system
+                && owner(&unseenPress, keyUp, option: true, shift: true) == .system,
+               "a brightness press whose key-down the tap never saw stays with the system")
+        var unseenPlainPress = BrightnessSupport.BrightnessKeyOwnership()
+        suite.expect(owner(&unseenPlainPress, keyRepeat) == .system
+                && owner(&unseenPlainPress, keyUp) == .system,
+               "unseen plain brightness repeats and releases stay with the system")
         var nextPress = BrightnessSupport.BrightnessKeyOwnership()
         _ = owner(&nextPress, keyDown, option: true)
         _ = owner(&nextPress, keyUp, option: true)
         suite.expect(owner(&nextPress, keyDown) == step,
                "the next plain brightness press is the app's again")
+        var lostRelease = BrightnessSupport.BrightnessKeyOwnership()
+        _ = owner(&lostRelease, keyDown, option: true)
+        suite.expect(owner(&lostRelease, keyDown) == step,
+               "a fresh brightness press is the app's even when the last release was lost")
         suite.expect(BrightnessSupport.keyboardLightOnLevel(lastNonzero: nil) == 0.5
                 && BrightnessSupport.keyboardLightOnLevel(lastNonzero: 0) == 0.5
                 && BrightnessSupport.keyboardLightOnLevel(lastNonzero: 0.7) == 0.7

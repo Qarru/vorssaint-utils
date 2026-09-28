@@ -16,7 +16,6 @@ final class PreciseVolumeRollerService: ObservableObject {
     private var gate = PreciseVolumeRollerGate()
     private var keyOwnership = PreciseVolumeKeyOwnership()
     private var notchKeyGate = NotchVolumeKeyGate()
-    private static let forwardedVolumeEvent: Int64 = 0x564F4C4E
 
     private init() {
         SessionActivity.shared.onChange { [weak self] _ in self?.syncWithPreferences() }
@@ -109,7 +108,7 @@ final class PreciseVolumeRollerService: ObservableObject {
         guard type.rawValue == CleaningSystemKeyEvent.systemDefinedEventTypeRawValue,
               let nsEvent = NSEvent(cgEvent: event),
               nsEvent.subtype.rawValue == 8 else { return Unmanaged.passUnretained(event) }
-        if event.getIntegerValueField(.eventSourceUserData) == Self.forwardedVolumeEvent {
+        if PreciseVolumeKeyEvents.isPosted(event) {
             return Unmanaged.passUnretained(event)
         }
         if routeNotchVolume(nsEvent, event: event) { return nil }
@@ -129,7 +128,7 @@ final class PreciseVolumeRollerService: ObservableObject {
         guard gate.accepts(volumePress.direction, at: ProcessInfo.processInfo.systemUptime) else {
             return nil
         }
-        Self.postVolumeKey(volumePress.keyCode, optionShift: true)
+        Self.postFineStep(volumePress.keyCode)
         return nil
     }
 
@@ -157,7 +156,7 @@ final class PreciseVolumeRollerService: ObservableObject {
         DispatchQueue.main.async {
             let completion: (Bool) -> Void = { applied in
                 if !applied, let fallback {
-                    fallback.setIntegerValueField(.eventSourceUserData, value: Self.forwardedVolumeEvent)
+                    fallback.setIntegerValueField(.eventSourceUserData, value: PreciseVolumeKeyEvents.postedMarker)
                     fallback.post(tap: .cgSessionEventTap)
                     Self.postForwardedRelease(code)
                 }
@@ -179,7 +178,7 @@ final class PreciseVolumeRollerService: ObservableObject {
                                       modifierFlags: NSEvent.ModifierFlags(rawValue: 0xB00),
                                       timestamp: 0, windowNumber: 0, context: nil,
                                       subtype: 8, data1: Int(code << 16) | 0xB00, data2: -1)?.cgEvent
-        event?.setIntegerValueField(.eventSourceUserData, value: forwardedVolumeEvent)
+        event?.setIntegerValueField(.eventSourceUserData, value: PreciseVolumeKeyEvents.postedMarker)
         event?.post(tap: .cgSessionEventTap)
     }
 
@@ -194,19 +193,7 @@ final class PreciseVolumeRollerService: ObservableObject {
         return (keyCode, direction, state == 0x0a, data1 & 1 != 0)
     }
 
-    private static func postVolumeKey(_ keyCode: Int32, optionShift: Bool) {
-        let fineFlags: UInt = optionShift ? 0x80000 | 0x20000 : 0
-        for state in [0x0a, 0x0b] {
-            let event = NSEvent.otherEvent(with: .systemDefined,
-                                           location: .zero,
-                                           modifierFlags: NSEvent.ModifierFlags(rawValue: UInt(state << 8) | fineFlags),
-                                           timestamp: 0,
-                                           windowNumber: 0,
-                                           context: nil,
-                                           subtype: 8,
-                                           data1: Int((keyCode << 16) | Int32(state << 8)),
-                                           data2: -1)
-            event?.cgEvent?.post(tap: CGEventTapLocation.cghidEventTap)
-        }
+    private static func postFineStep(_ keyCode: Int32) {
+        PreciseVolumeKeyEvents.fineStep(keyCode).forEach { $0.post(tap: .cghidEventTap) }
     }
 }
