@@ -3151,6 +3151,26 @@ enum PointerInputFeatureTests {
                 && PreciseVolumeMediaKey.volumeDown.rollerDirection == .down
                 && PreciseVolumeMediaKey.mute.rollerDirection == nil,
                "precise volume only remaps volume up and down media keys")
+        var optionPress = PreciseVolumeKeyOwnership()
+        suite.expect(optionPress.leavesToSystem(keyCode: 0, isDown: true, isRepeat: false,
+                                                option: true, commandOrControl: false)
+                && optionPress.leavesToSystem(keyCode: 0, isDown: true, isRepeat: true,
+                                              option: false, commandOrControl: false)
+                && optionPress.leavesToSystem(keyCode: 0, isDown: false, isRepeat: false,
+                                              option: false, commandOrControl: false),
+               "precise volume leaves an Option press to the system until its release")
+        var commandPress = PreciseVolumeKeyOwnership()
+        suite.expect(commandPress.leavesToSystem(keyCode: 1, isDown: true, isRepeat: false,
+                                                 option: false, commandOrControl: true),
+               "precise volume leaves a Command or Control press to the system")
+        var plainPress = PreciseVolumeKeyOwnership()
+        suite.expect(!plainPress.leavesToSystem(keyCode: 0, isDown: true, isRepeat: false,
+                                                option: false, commandOrControl: false)
+                && !plainPress.leavesToSystem(keyCode: 0, isDown: true, isRepeat: true,
+                                              option: true, commandOrControl: false)
+                && !plainPress.leavesToSystem(keyCode: 0, isDown: false, isRepeat: false,
+                                              option: true, commandOrControl: false),
+               "precise volume keeps remapping a plain press when Option joins mid-press")
 
         // MARK: Brightness key base (issue #370)
 

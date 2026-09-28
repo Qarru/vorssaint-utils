@@ -52,6 +52,23 @@ struct PreciseVolumeRollerGate {
     }
 }
 
+struct PreciseVolumeKeyOwnership {
+    private var systemKeys = Set<Int32>()
+
+    mutating func leavesToSystem(keyCode: Int32, isDown: Bool, isRepeat: Bool,
+                                 option: Bool, commandOrControl: Bool) -> Bool {
+        guard isDown else { return systemKeys.remove(keyCode) != nil }
+        if !isRepeat {
+            if option || commandOrControl {
+                systemKeys.insert(keyCode)
+            } else {
+                systemKeys.remove(keyCode)
+            }
+        }
+        return systemKeys.contains(keyCode)
+    }
+}
+
 enum PreciseVolumeMediaKey: Int32 {
     case volumeUp = 0
     case volumeDown = 1

@@ -14,6 +14,7 @@ final class PreciseVolumeRollerService: ObservableObject {
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var gate = PreciseVolumeRollerGate()
+    private var keyOwnership = PreciseVolumeKeyOwnership()
     private var notchKeyGate = NotchVolumeKeyGate()
     private static let forwardedVolumeEvent: Int64 = 0x564F4C4E
 
@@ -53,6 +54,7 @@ final class PreciseVolumeRollerService: ObservableObject {
         source = nil
         gate.reset()
         notchKeyGate = NotchVolumeKeyGate()
+        keyOwnership = PreciseVolumeKeyOwnership()
     }
 
     private func start() {
@@ -116,7 +118,10 @@ final class PreciseVolumeRollerService: ObservableObject {
             return Unmanaged.passUnretained(event)
         }
 
-        if event.flags.contains(.maskAlternate), event.flags.contains(.maskShift) {
+        if keyOwnership.leavesToSystem(
+            keyCode: volumePress.keyCode, isDown: volumePress.isDown, isRepeat: volumePress.isRepeat,
+            option: event.flags.contains(.maskAlternate),
+            commandOrControl: !event.flags.isDisjoint(with: [.maskCommand, .maskControl])) {
             return Unmanaged.passUnretained(event)
         }
 
@@ -180,12 +185,13 @@ final class PreciseVolumeRollerService: ObservableObject {
 
     private static func volumePress(fromData1 data1: Int) -> (keyCode: Int32,
                                                              direction: PreciseVolumeRollerDirection,
-                                                             isDown: Bool)? {
+                                                             isDown: Bool,
+                                                             isRepeat: Bool)? {
         let keyCode = Int32((data1 >> 16) & 0xffff)
         guard let mediaKey = PreciseVolumeMediaKey(rawValue: keyCode),
               let direction = mediaKey.rollerDirection else { return nil }
         let state = (data1 >> 8) & 0xff
-        return (keyCode, direction, state == 0x0a)
+        return (keyCode, direction, state == 0x0a, data1 & 1 != 0)
     }
 
     private static func postVolumeKey(_ keyCode: Int32, optionShift: Bool) {
